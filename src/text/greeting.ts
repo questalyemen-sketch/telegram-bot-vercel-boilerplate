@@ -1,7 +1,4 @@
-import createDebug from 'debug';
-import https from 'https';
-
-const debug = createDebug('bot:greeting_text');
+import * as https from 'https';
 
 // دالة مستقرة ومتوافقة بالكامل مع نظام Node.js لجلب بيانات الفيديو
 const fetchTiktokData = (apiUrl: string): Promise<any> => {
@@ -29,7 +26,7 @@ const replyToMessage = (ctx: any, messageId: number, text: string) => {
 };
 
 const greeting = () => async (ctx: any) => {
-  debug('Triggered "greeting" text command');
+  console.log('Triggered "greeting" text command');
 
   const messageId = ctx.message?.message_id;
   if (!messageId) return;
@@ -84,7 +81,7 @@ const greeting = () => async (ctx: any) => {
         await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
       }
     }
-    return; // إنهاء الدالة حتى لا يتنفذ كود الترحيب
+    return; // إنهاء الدالة حتى لا يتنفذ كود الترحيب العادي
   }
 
   // ─── 2. إذا أرسل المستخدم أي رسالة عادية أخرى ───
