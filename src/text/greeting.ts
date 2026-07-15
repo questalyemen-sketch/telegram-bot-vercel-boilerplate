@@ -3,23 +3,34 @@ import createDebug from 'debug';
 
 const debug = createDebug('bot:greeting_text');
 
-const replyToMessage = (ctx: Context, messageId: number, string: string) =>
-  ctx.reply(string, {
+const replyToMessage = (ctx: Context, messageId: number, text: string) =>
+  ctx.reply(text, {
     reply_parameters: { message_id: messageId },
   });
 
 const greeting = () => async (ctx: Context) => {
   debug('Triggered "greeting" text command');
 
+  // نحاول الحصول على message_id إن وجد
   const messageId = ctx.message?.message_id;
-  
-  // معالجة ذكية لدمج الاسم الأول والأخير وتجنب الـ undefined تماماً
-  const firstName = ctx.message?.from?.first_name || '';
-  const lastName = ctx.message?.from?.last_name || '';
-  const userName = `${firstName} ${lastName}`.trim() || ctx.message?.from?.username || 'Friend';
+
+  // نستخدم ctx.from لأنها متوفرة في أغلب أنواع التحديثات (messages, callbacks, إلخ)
+  const firstName = ctx.from?.first_name || '';
+  const lastName = ctx.from?.last_name || '';
+  const username = ctx.from?.username || '';
+
+  // نبني الاسم الكامل بدون undefined
+  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+  const userName = fullName || username || 'صديقي';
+
+  // نص الترحيب باللغة العربية
+  const greetingText = `مرحباً، ${userName}! يسعدني تواجدك مع البوت 🌟`;
 
   if (messageId) {
-    await replyToMessage(ctx, messageId, `Hello, ${userName}!`);
+    await replyToMessage(ctx, messageId, greetingText);
+  } else {
+    // في حال عدم وجود message_id (بعض أنواع الـ updates)، نستخدم reply عادي
+    await ctx.reply(greetingText);
   }
 };
 
