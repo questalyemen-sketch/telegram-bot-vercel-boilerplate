@@ -14,7 +14,7 @@ const greeting = () => async (ctx: Context) => {
   // نحاول الحصول على message_id إن وجد
   const messageId = ctx.message?.message_id;
 
-  // نستخدم ctx.from لأنها متوفرة في أغلب أنواع التحديثات (messages, callbacks, إلخ)
+  // نستخدم ctx.from لأنها متوفرة في أغلب أنواع التحديثات
   const firstName = ctx.from?.first_name || '';
   const lastName = ctx.from?.last_name || '';
   const username = ctx.from?.username || '';
@@ -29,7 +29,6 @@ const greeting = () => async (ctx: Context) => {
   if (messageId) {
     await replyToMessage(ctx, messageId, greetingText);
   } else {
-    // في حال عدم وجود message_id (بعض أنواع الـ updates)، نستخدم reply عادي
     await ctx.reply(greetingText);
   }
 };
