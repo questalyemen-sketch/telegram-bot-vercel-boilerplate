@@ -3,33 +3,23 @@ import createDebug from 'debug';
 
 const debug = createDebug('bot:greeting_text');
 
-const replyToMessage = (ctx: Context, messageId: number, text: string) =>
-  ctx.reply(text, {
+const replyToMessage = (ctx: Context, messageId: number, string: string) =>
+  ctx.reply(string, {
     reply_parameters: { message_id: messageId },
   });
 
 const greeting = () => async (ctx: Context) => {
   debug('Triggered "greeting" text command');
 
-  // نحاول الحصول على message_id إن وجد
   const messageId = ctx.message?.message_id;
-
-  // نستخدم ctx.from لأنها متوفرة في أغلب أنواع التحديثات
+  
+  // استخدام ctx.from كطريقة مختصرة وآمنة جداً في مكتبة Telegraf لتجنب مشاكل الـ TypeScript
   const firstName = ctx.from?.first_name || '';
   const lastName = ctx.from?.last_name || '';
-  const username = ctx.from?.username || '';
-
-  // نبني الاسم الكامل بدون undefined
-  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
-  const userName = fullName || username || 'صديقي';
-
-  // نص الترحيب باللغة العربية
-  const greetingText = `مرحباً، ${userName}! يسعدني تواجدك مع البوت 🌟`;
+  const userName = `${firstName} ${lastName}`.trim() || 'Friend';
 
   if (messageId) {
-    await replyToMessage(ctx, messageId, greetingText);
-  } else {
-    await ctx.reply(greetingText);
+    await replyToMessage(ctx, messageId, `Hello, ${userName}!`);
   }
 };
 
