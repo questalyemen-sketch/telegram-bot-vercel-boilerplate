@@ -1,33 +1,42 @@
-import { Context } from 'telegraf';
 import createDebug from 'debug';
+import https from 'https';
 
 const debug = createDebug('bot:greeting_text');
 
-// تعريف واجهة البيانات لمنع أخطاء بناء TypeScript الصارمة في Vercel
-interface TikWMResponse {
-  code: number;
-  msg: string;
-  data?: {
-    play: string;
-    title?: string;
-  };
-}
+// دالة مستقرة ومتوافقة بالكامل مع نظام Node.js لجلب بيانات الفيديو
+const fetchTiktokData = (apiUrl: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    https.get(apiUrl, (res: any) => {
+      let data = '';
+      res.on('data', (chunk: any) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }).on('error', (err: any) => {
+      reject(err);
+    });
+  });
+};
 
-const replyToMessage = (ctx: Context, messageId: number, string: string) =>
-  ctx.reply(string, {
+const replyToMessage = (ctx: any, messageId: number, text: string) => {
+  return ctx.reply(text, {
     reply_parameters: { message_id: messageId },
   });
+};
 
-const greeting = () => async (ctx: Context) => {
+const greeting = () => async (ctx: any) => {
   debug('Triggered "greeting" text command');
 
   const messageId = ctx.message?.message_id;
   if (!messageId) return;
 
-  // جلب النص المرسل في الرسالة
-  const messageText = (ctx.message as any).text || '';
+  const messageText = ctx.message?.text || '';
 
-  // تعبير نمطي (Regex) للتحقق مما إذا كانت الرسالة تحتوي على رابط تيك توك
+  // التحقق من وجود رابط تيك توك في الرسالة
   const tiktokRegex = /(https?:\/\/(?:www\.|vm\.|vt\.)?tiktok\.com\/[^\s]+)/i;
   const hasTiktokLink = messageText.match(tiktokRegex);
 
@@ -35,17 +44,21 @@ const greeting = () => async (ctx: Context) => {
   if (hasTiktokLink) {
     const tiktokUrl = hasTiktokLink[0];
 
-    // إرسال رسالة انتظار سريعة للمستخدم
-    const loadingMsg = await ctx.reply('جاري تحميل الفيديو بدون علامة مائية... ⏳', {
-      reply_parameters: { message_id: messageId }
-    });
+    // إرسال رسالة انتظار مؤقتة
+    let loadingMsg: any;
+    try {
+      loadingMsg = await ctx.reply('جاري جلب الفيديو بدون علامة مائية... ⏳', {
+        reply_parameters: { message_id: messageId }
+      });
+    } catch (e) {
+      console.error('Error sending loading message', e);
+    }
 
     try {
-      // استدعاء API مجاني وسريع جداً لجلب الفيديو بدون حقوق
-      const response = await fetch(`https://tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}`);
-      const resData = (await response.json()) as TikWMResponse;
+      const apiUrl = `https://tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}`;
+      const resData = await fetchTiktokData(apiUrl);
 
-      if (resData.code === 0 && resData.data?.play) {
+      if (resData && resData.code === 0 && resData.data?.play) {
         const videoUrl = resData.data.play;
         const videoTitle = resData.data.title || 'تم التحميل بنجاح! 🎬';
 
@@ -56,19 +69,22 @@ const greeting = () => async (ctx: Context) => {
         });
 
         // حذف رسالة الانتظار لتنظيف المحادثة
-        await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
+        if (loadingMsg) {
+          await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
+        }
       } else {
-        throw new Error('Failed to fetch video link from API');
+        throw new Error('Invalid API response');
       }
     } catch (error) {
       console.error(error);
-      // في حال حدوث مشكلة، نبلغ المستخدم ونحذف رسالة التحميل
-      await ctx.reply('عذراً، لم أتمكن من تحميل الفيديو. تأكد من أن الحساب صاحب الفيديو عام وليس خاصاً.', {
+      await ctx.reply('عذراً يا صالح، حدث خطأ أثناء محاولة تحميل الفيديو. تأكد من أن حساب الفيديو عام وليس خاصاً.', {
         reply_parameters: { message_id: messageId }
       });
-      await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
+      if (loadingMsg) {
+        await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
+      }
     }
-    return; // ننهي الدالة هنا حتى لا يتم تفعيل كود الترحيب العادي
+    return; // إنهاء الدالة حتى لا يتنفذ كود الترحيب
   }
 
   // ─── 2. إذا أرسل المستخدم أي رسالة عادية أخرى ───
