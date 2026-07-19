@@ -70,23 +70,35 @@ const greeting = () => async (ctx: any) => {
       }
     } catch (error) {
       console.error(error);
-      await ctx.reply('عذراً يا صالح، حدث خطأ أثناء محاولة تحميل الفيديو. تأكد من أن حساب الفيديو عام وليس خاصاً.', {
+      await ctx.reply('عذراً، حدث خطأ أثناء محاولة تحميل الفيديو. تأكد من أن حساب الفيديو عام وليس خاصاً.', {
         reply_parameters: { message_id: messageId }
       });
       if (loadingMsg) {
         await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
       }
     }
-    return; // إنهاء الدالة لمنع تشغيل الترحيب العادي
+    return; 
   }
 
-  // ─── 2. الرد الترحيبي العادي ───
-  const firstName = ctx.from?.first_name || '';
-  const lastName = ctx.from?.last_name || '';
-  const userName = `${firstName} ${lastName}`.trim() || 'Friend';
+  // ─── 2. إذا أرسل المستخدم أمر البدء /start ───
+  if (messageText === '/start') {
+    const firstName = ctx.from?.first_name || 'العزيز';
+    const welcomeText =
+      `أهلاً بك يا ${firstName} في بوت تحميل مقاطع تيك توك! 🚀🎬\n\n` +
+      `البوت مخصص لمساعدتك في تحميل مقاطع TikTok بأعلى جودة ممكنة وبدون علامة مائية مباشرة داخل تيليجرام. ✨\n\n` +
+      `👇 كل ما عليك فعله الآن:\n` +
+      `الصق رابط الفيديو المراد تحميله هنا..`;
 
-  await ctx.reply(`Hello, ${userName}!`, {
-    reply_parameters: { message_id: messageId },
+    await ctx.reply(welcomeText, {
+      reply_parameters: { message_id: messageId },
+      reply_markup: { remove_keyboard: true } // لتنظيف أي أزرار قديمة متبقية
+    });
+    return;
+  }
+
+  // ─── 3. إذا أرسل أي نص آخر عشوائي ليس رابطاً ───
+  await ctx.reply('⚠️ من فضلك، قم بإرسال أو لصق رابط فيديو TikTok صحيح ليتم تحميله فوراً.', {
+    reply_parameters: { message_id: messageId }
   });
 };
 
