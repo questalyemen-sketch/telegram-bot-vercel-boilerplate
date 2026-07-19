@@ -24,6 +24,40 @@ const fetchTiktokData = (apiUrl: string): Promise<any> => {
 };
 
 const greeting = () => async (ctx: any) => {
+  // ─── أ. معالجة ضغطات أزرار الجودة (Callback Query) ───
+  if (ctx.callbackQuery) {
+    const callbackData = ctx.callbackQuery.data || '';
+    const messageId = ctx.callbackQuery.message?.message_id;
+
+    if (callbackData.startsWith('dl_sd|') || callbackData.startsWith('dl_hd|')) {
+      // إشعار سريع للمستخدم بجاري التحميل
+      await ctx.answerCallbackQuery('جاري تحميل وإرسال الفيديو... ⏳').catch(() => {});
+
+      // استخراج نوع الجودة والرابط المشفر من زر الضغط
+      const [type, encodedVideoUrl] = callbackData.split('|');
+      const videoUrl = decodeURIComponent(encodedVideoUrl);
+      const videoTitle = type === 'dl_hd' ? 'تم التحميل بأعلى جودة (HD) 🔥🎬' : 'تم التحميل بالجودة العادية ⚡🎬';
+
+      try {
+        // إرسال الفيديو مباشرة كرد على الرسالة الأصلية
+        await ctx.replyWithVideo(videoUrl, {
+          caption: videoTitle
+        });
+        
+        // تعديل أزرار الرسالة السابقة لتوضيح إتمام العملية بنجاح
+        await ctx.editMessageText('✅ تم إرسال الفيديو بنجاح!', {
+          reply_markup: { inline_keyboard: [] } // حذف الأزرار لعدم تكرار الضغط
+        }).catch(() => {});
+
+      } catch (error) {
+        console.error(error);
+        await ctx.reply('⚠️ عذراً، حدث خطأ أثناء إرسال ملف الفيديو من خوادم تليجرام. قد يكون حجم الفيديو المختار كبيراً جداً.');
+      }
+      return;
+    }
+  }
+
+  // إذا لم تكن رسالة نصية عادية، نوقف التنفيذ
   const messageId = ctx.message?.message_id;
   if (!messageId) return;
 
@@ -40,7 +74,7 @@ const greeting = () => async (ctx: any) => {
     // رسالة انتظار
     let loadingMsg: any;
     try {
-      loadingMsg = await ctx.reply('جاري جلب الفيديو بدون علامة مائية... ⏳', {
+      loadingMsg = await ctx.reply('جاري فحص الرابط واستخراج خيارات الجودة... ⏳', {
         reply_parameters: { message_id: messageId }
       });
     } catch (e) {
@@ -51,26 +85,42 @@ const greeting = () => async (ctx: any) => {
       const apiUrl = `https://tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}`;
       const resData = await fetchTiktokData(apiUrl);
 
-      if (resData && resData.code === 0 && resData.data?.play) {
-        const videoUrl = resData.data.play;
-        const videoTitle = resData.data.title || 'تم التحميل بنجاح! 🎬';
+      if (resData && resData.code === 0 && resData.data) {
+        const sdUrl = resData.data.play;
+        // إذا لم تتوفر جودة HD نستخدم الجودة العادية كبديل تلقائي
+        const hdUrl = resData.data.hdplay || sdUrl; 
 
-        // إرسال الفيديو مباشرة
-        await ctx.replyWithVideo(videoUrl, {
-          caption: videoTitle,
-          reply_parameters: { message_id: messageId }
-        });
+        // تشفير الروابط لكي نتمكن من تمريرها داخل أزرار التليجرام الشفافة (الحد الأقصى لبيانات الزر 64 بايت)
+        const encSd = encodeURIComponent(sdUrl);
+        const encHd = encodeURIComponent(hdUrl);
 
-        // حذف رسالة الانتظار
+        // بناء الأزرار التفاعلية لاختيار الجودة
+        const qualityKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🎬 جودة عادية (سريع)', callback_data: `dl_sd|${encSd.substring(0, 50)}` },
+              { text: '🔥 جودة عالية (HD)', callback_data: `dl_hd|${encHd.substring(0, 50)}` }
+            ]
+          ]
+        };
+
+        // حذف رسالة الانتظار أولاً
         if (loadingMsg) {
           await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
         }
+
+        // إرسال خيارات الجودة للمستخدم
+        await ctx.reply('اختر جودة تحميل الفيديو المناسبة لك:', {
+          reply_parameters: { message_id: messageId },
+          reply_markup: qualityKeyboard
+        });
+
       } else {
         throw new Error('Invalid response');
       }
     } catch (error) {
       console.error(error);
-      await ctx.reply('عذراً، حدث خطأ أثناء محاولة تحميل الفيديو. تأكد من أن حساب الفيديو عام وليس خاصاً.', {
+      await ctx.reply('عذراً، حدث خطأ أثناء جلب خيارات التحميل. تأكد من أن الرابط يعمل بشكل صحيح وحساب الفيديو عام.', {
         reply_parameters: { message_id: messageId }
       });
       if (loadingMsg) {
@@ -91,7 +141,7 @@ const greeting = () => async (ctx: any) => {
 
     await ctx.reply(welcomeText, {
       reply_parameters: { message_id: messageId },
-      reply_markup: { remove_keyboard: true } // لتنظيف أي أزرار قديمة متبقية
+      reply_markup: { remove_keyboard: true }
     });
     return;
   }
