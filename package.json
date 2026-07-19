@@ -1,10 +1,10 @@
 {
-  "name": "telegram-bot-vercel-boilerplate",
-  "version": "1.1.0",
-  "description": "Telegram Bot Vercel Boilerplate",
+  "name": "tiktok-downloader-bot",
+  "version": "2.0.0",
+  "description": "Telegram Bot for Downloading TikTok Videos Without Watermark",
   "main": "src/index.ts",
-  "author": "Mark Pavlov (https://github.com/sollidy)",
-  "homepage": "https://github.com/sollidy/telegram-bot-vercel-boilerplate",
+  "author": "Saleh Al-Khulaifi",
+  "homepage": "",
   "dependencies": {
     "@vercel/node": "^5.1.16",
     "dotenv-cli": "^8.0.0",
