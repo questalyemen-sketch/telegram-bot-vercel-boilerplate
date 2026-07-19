@@ -1,14 +1,25 @@
+// @ts-nocheck
 import { Context } from 'telegraf';
-import createDebug from 'debug';
 
-import { author, name, version } from '../../package.json';
+const about = () => async (ctx: any) => {
+  const messageId = ctx.message?.message_id;
 
-const debug = createDebug('bot:about_command');
+  // نص الرسالة التعريفية المنسق باسمك وتخصصك المتميز
+  const aboutText = 
+    `🤖 *TikTok Downloader Bot*\n` +
+    `📦 *الإصدار:* v2.0.0\n\n` +
+    `👨‍💻 *تطوير وبناء:* صالح الخليفي\n` +
+    `🛠️ *التخصص:* مهندس إلكترونيات ومطور حلول برمجية\n\n` +
+    `✨ *عن البوت:* أداة ذكية وسريعة مخصصة لجلب وتحميل مقاطع تيك توك بجودة عالية وبدون علامة مائية مباشرة داخل تليجرام.`;
 
-const about = () => async (ctx: Context) => {
-  const message = `*${name} ${version}*\n${author}`;
-  debug(`Triggered "about" command with message \n${message}`);
-  await ctx.replyWithMarkdownV2(message, { parse_mode: 'Markdown' });
+  try {
+    await ctx.reply(aboutText, {
+      parse_mode: 'Markdown',
+      reply_parameters: messageId ? { message_id: messageId } : undefined,
+    });
+  } catch (error) {
+    console.error('Error in about command:', error);
+  }
 };
 
 export { about };
